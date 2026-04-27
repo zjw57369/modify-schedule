@@ -9,7 +9,7 @@ def modify_schedule(input_path, output_path):
     yellow_fill = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
 
     # 需要替换成日班的关键词列表（添加结，凝血改为凝）
-    daily_words = {'血', '急', '凝', '服', '接', '细', '肿', '小', '白', '骨', '生', '免', 'P日', '抽', '早', '精', '科', '结'}
+    daily_words = {'血', '急', '凝', '服', '接', '细', '肿', '小', '白', '骨', '生', '免', 'P日', '抽', '早', '精', '科', '结', '公'}
 
     # 完全匹配替换表
     exact_match_replace = {
