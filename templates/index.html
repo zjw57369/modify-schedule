@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>排班自动替换工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+        }
+        .tab {
+            flex: 1;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 15px;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .tab:hover {
+            background: #f5f5f5;
+        }
+        .tab.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .upload-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .upload-hint {
+            color: #999;
+            font-size: 14px;
+        }
+        #file-input {
+            display: none;
+        }
+        .processing {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            background: #f0fff4;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        .result-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .result-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .error {
+            display: none;
+            background: #fff5f5;
+            color: #c53030;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .rules-section {
+            margin-bottom: 30px;
+        }
+        .rules-section h3 {
+            color: #333;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+        }
+        .rule-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .rule-tag {
+            background: #f0f0ff;
+            color: #667eea;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .rule-tag .delete {
+            cursor: pointer;
+            color: #999;
+            font-weight: bold;
+        }
+        .rule-tag .delete:hover {
+            color: #c53030;
+        }
+        .add-rule {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .add-rule input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .add-rule button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .exact-rule-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .exact-rule-text {
+            font-size: 14px;
+        }
+        .exact-rule-text span {
+            color: #667eea;
+            font-weight: 500;
+        }
+        .exact-rule-item button {
+            background: #fee2e2;
+            color: #dc2626;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .add-exact-rule {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .add-exact-rule input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .add-exact-rule button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .save-config-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            display: none;
+            z-index: 1000;
+        }
+        .toast.success {
+            background: #10b981;
+        }
+        .toast.error {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 排班自动替换工具</h1>
+            <p>上传Excel排班表，自动替换关键词，一键处理</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="upload">📁 文件处理</button>
+            <button class="tab" data-tab="rules">⚙️ 规则配置</button>
+        </div>
+        
+        <div class="content">
+            <div id="upload" class="tab-content active">
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-text">点击或拖拽Excel文件到这里</div>
+                    <div class="upload-hint">支持 .xlsx 格式，最大 16MB</div>
+                    <input type="file" id="file-input" accept=".xlsx,.xls">
+                </div>
+                
+                <div class="processing" id="processing">
+                    <div class="spinner"></div>
+                    <p>正在处理文件，请稍候...</p>
+                </div>
+                
+                <div class="result" id="result">
+                    <div class="result-icon">✅</div>
+                    <h3>处理完成！</h3>
+                    <div class="result-stats">
+                        <div class="stat-item">
+                            <div class="stat-number" id="stat-modified">0</div>
+                            <div class="stat-label">替换单元格</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="stat-triangle">0</div>
+                            <div class="stat-label">三角形替换</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="stat-highlighted">0</div>
+                            <div class="stat-label">标黄单元格</div>
+                        </div>
+                    </div>
+                    <button class="download-btn" id="download-btn">下载处理后的文件</button>
+                </div>
+                
+                <div class="error" id="error"></div>
+            </div>
+            
+            <div id="rules" class="tab-content">
+                <div class="rules-section">
+                    <h3>🔑 日班关键词</h3>
+                    <p style="color: #666; margin-bottom: 12px; font-size: 14px;">包含这些关键词的单元格会被识别为日班（包含两个以上则直接替换）</p>
+                    <div class="rule-list" id="keywords-list"></div>
+                    <div class="add-rule">
+                        <input type="text" id="new-keyword" placeholder="输入新的关键词">
+                        <button onclick="addKeyword()">添加</button>
+                    </div>
+                </div>
+                
+                <div class="rules-section">
+                    <h3>📋 精确匹配规则</h3>
+                    <p style="color: #666; margin-bottom: 12px; font-size: 14px;">完全匹配时直接替换为对应内容</p>
+                    <div id="exact-rules-list"></div>
+                    <div class="add-exact-rule">
+                        <input type="text" id="new-rule-from" placeholder="匹配内容">
+                        <input type="text" id="new-rule-to" placeholder="替换为">
+                        <button onclick="addExactRule()">添加</button>
+                    </div>
+                </div>
+                
+                <button class="save-config-btn" onclick="saveConfig()">💾 保存规则配置</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        let currentConfig = null;
+        let processedFile = null;
+        let processedFilename = null;
+        
+        // Tab切换
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+        
+        // 文件上传
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+                showError('只支持 .xlsx 或 .xls 格式的Excel文件');
+                return;
+            }
+            
+            document.getElementById('processing').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            fetch('/api/process', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob().then(blob => {
+                        processedFile = blob;
+                        processedFilename = file.name.replace(/\.(xlsx|xls)$/, '_modified.$1');
+                        showResult();
+                    });
+                } else {
+                    return response.json().then(data => {
+                        throw new Error(data.message || '处理失败');
+                    });
+                }
+            })
+            .catch(error => {
+                document.getElementById('processing').style.display = 'none';
+                showError(error.message);
+            });
+        }
+        
+        function showResult() {
+            document.getElementById('processing').style.display = 'none';
+            document.getElementById('result').style.display = 'block';
+        }
+        
+        document.getElementById('download-btn').addEventListener('click', () => {
+            if (processedFile) {
+                const url = URL.createObjectURL(processedFile);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = processedFilename;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        });
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = '❌ ' + message;
+            errorDiv.style.display = 'block';
+        }
+        
+        // 规则配置
+        function loadConfig() {
+            fetch('/api/config')
+                .then(res => res.json())
+                .then(config => {
+                    currentConfig = config;
+                    renderRules();
+                });
+        }
+        
+        function renderRules() {
+            // 渲染关键词
+            const keywordsList = document.getElementById('keywords-list');
+            keywordsList.innerHTML = currentConfig.daily_keywords.map((kw, idx) => `
+                <div class="rule-tag">
+                    ${kw}
+                    <span class="delete" onclick="deleteKeyword(${idx})">×</span>
+                </div>
+            `).join('');
+            
+            // 渲染精确匹配规则
+            const exactRulesList = document.getElementById('exact-rules-list');
+            exactRulesList.innerHTML = Object.entries(currentConfig.exact_match_rules).map(([k, v], idx) => `
+                <div class="exact-rule-item">
+                    <span class="exact-rule-text"><span>'${k}'</span> → <span>'${v}'</span></span>
+                    <button onclick="deleteExactRule('${k}')">删除</button>
+                </div>
+            `).join('');
+        }
+        
+        function addKeyword() {
+            const input = document.getElementById('new-keyword');
+            const kw = input.value.trim();
+            if (kw && !currentConfig.daily_keywords.includes(kw)) {
+                currentConfig.daily_keywords.push(kw);
+                input.value = '';
+                renderRules();
+                showToast('已添加关键词');
+            }
+        }
+        
+        function deleteKeyword(idx) {
+            currentConfig.daily_keywords.splice(idx, 1);
+            renderRules();
+            showToast('已删除关键词');
+        }
+        
+        function addExactRule() {
+            const from = document.getElementById('new-rule-from').value.trim();
+            const to = document.getElementById('new-rule-to').value.trim();
+            if (from && to) {
+                currentConfig.exact_match_rules[from] = to;
+                document.getElementById('new-rule-from').value = '';
+                document.getElementById('new-rule-to').value = '';
+                renderRules();
+                showToast('已添加规则');
+            }
+        }
+        
+        function deleteExactRule(key) {
+            delete currentConfig.exact_match_rules[key];
+            renderRules();
+            showToast('已删除规则');
+        }
+        
+        function saveConfig() {
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(currentConfig)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('✅ 配置已保存成功！', 'success');
+                } else {
+                    showToast('保存失败', 'error');
+                }
+            });
+        }
+        
+        function showToast(message, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2000);
+        }
+        
+        // 页面加载时获取配置
+        loadConfig();
+    </script>
+</body>
+</html>
