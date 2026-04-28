@@ -1,4 +1,4 @@
-name: Build Windows EXE + Web
+name: Build All-in-One Package
 
 on:
   workflow_dispatch:
@@ -30,13 +30,14 @@ jobs:
           mkdir release
           copy dist\modify_schedule.exe release\
           copy app.py release\
+          copy "排班工具.html" release\
           copy requirements.txt release\
           copy "启动网页版.bat" release\
-          copy README.md release\ 2>$null || echo ""
+          copy README.txt release\
           xcopy /E /I templates release\templates\
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: 排班工具-完整版
+          name: 排班工具-全功能版
           path: release/
